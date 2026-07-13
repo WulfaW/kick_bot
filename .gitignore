@@ -1,0 +1,20 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+
+# Environment Variables
+.env
+
+# Testing
+.pytest_cache/
+coverage.xml
+htmlcov/
+
+# Credentials
+cookies.json
+kick_tokens.db
