@@ -114,6 +114,8 @@ class KickAdapter(BaseAdapter):
                     page = await self.context.new_page()
                     await stealth_async(page)
                     await page.goto(f"https://kick.com/{channel}")
+                    # Cloudflare korumasini gecmesi icin biraz bekleyelim
+                    await page.wait_for_timeout(5000)
                     self.pages[channel] = page
                     
                 logger.info(f"Playwright headless browser started and loaded pages for channels: {self.config.channels}")
@@ -138,7 +140,12 @@ class KickAdapter(BaseAdapter):
                 logger.info(f"Message sent to {channel} physically via Playwright.")
             except Exception as e:
                 title = await page.title()
-                logger.error(f"Failed to send message to {channel} via Playwright. Error: {e} | Page Title: {title}")
+                try:
+                    html_content = await page.content()
+                    snippet = html_content[:300].replace('\n', ' ')
+                except:
+                    snippet = "Could not get HTML"
+                logger.error(f"Failed to send message to {channel} via Playwright. Error: {e} | Page Title: {title} | HTML Preview: {snippet}")
 
     async def disconnect(self):
         logger.info("Disconnecting from Kick...")
