@@ -1,15 +1,14 @@
-# Use the official Playwright Python image which already has all OS dependencies and browsers installed!
-FROM mcr.microsoft.com/playwright/python:v1.42.0-jammy
+FROM python:3.12-slim-bullseye
 
-# Set working directory
 WORKDIR /app
 
-# Copy requirements and install them
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# Debian Bullseye has all the required font packages, unlike Bookworm.
+# This prevents the apt-get errors and is much faster to build than the 2GB official image!
+RUN playwright install --with-deps chromium
+
 COPY . .
 
-# Run the bot
 CMD ["python", "main.py"]
