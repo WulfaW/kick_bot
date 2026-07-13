@@ -16,6 +16,8 @@ class CrosshairCommand(BaseCommand):
     def aliases(self) -> list[str]:
         return ["cross", "ch"]
 
-    async def execute(self, *args, **kwargs) -> str:
+    async def execute(self, *args, **kwargs) -> str | None:
         crosshair_code = self.config.riot.crosshair
+        if not crosshair_code:
+            return None
         return f"🎯 Crosshair Kodu: {crosshair_code}"
