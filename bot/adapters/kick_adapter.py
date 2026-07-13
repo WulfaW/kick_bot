@@ -74,10 +74,17 @@ class KickAdapter(BaseAdapter):
                 cookies = json.loads(os.getenv("KICK_COOKIES"))
                 
             if cookies:
-                # We do NOT use channel="chrome" in cloud environments since standard chromium works best with playwright install
+                # Docker ve düşük RAM ortamlarında Playwright'ın çökmesini engellemek için özel argümanlar
                 self.browser = await self.playwright.chromium.launch(
                     headless=True,
-                    args=["--disable-blink-features=AutomationControlled"]
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                        "--disable-software-rasterizer"
+                    ]
                 )
                 self.context = await self.browser.new_context(
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
