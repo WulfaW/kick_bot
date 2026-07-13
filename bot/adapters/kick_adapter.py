@@ -108,11 +108,11 @@ class KickAdapter(BaseAdapter):
                         
                 await self.context.add_cookies(cookies)
                 
-                from playwright_stealth import stealth_async
+                from playwright_stealth import Stealth
                 # Open a separate page for each channel
                 for channel in self.config.channels:
                     page = await self.context.new_page()
-                    await stealth_async(page)
+                    await Stealth().apply_stealth_async(page)
                     await page.goto(f"https://kick.com/{channel}")
                     # Cloudflare korumasini gecmesi icin biraz bekleyelim
                     await page.wait_for_timeout(5000)
