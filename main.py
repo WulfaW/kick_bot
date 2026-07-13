@@ -64,12 +64,32 @@ async def main():
     await kick_adapter.connect()
 
     # ========================================================
+    # RENDER FIX: Start a dummy web server to satisfy the port scan
+    # ========================================================
+    from aiohttp import web
+    async def health_check(request):
+        return web.Response(text="Bot is running!")
+    
+    app = web.Application()
+    app.router.add_get('/', health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    import os
+    port = int(os.getenv("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logger.info(f"Dummy web server started on port {port} to satisfy Render.")
+
+    # ========================================================
     # Bot is now listening to real Kick chat events.
     # It will block here until a shutdown signal is received.
     # ========================================================
     await stop_event.wait()
 
     # 8. Cleanup and Teardown
+    await site.stop()
+    await runner.cleanup()
     await kick_adapter.disconnect()
     await http_client.close()
     logger.info("Bot shut down successfully.")
