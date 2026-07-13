@@ -6,4 +6,4 @@ pytest-asyncio==0.23.6
 kickpython==0.1.5
 curl_cffi==0.15.0
 playwright==1.42.0
-playwright-stealth==8.1.1
+playwright-stealth
