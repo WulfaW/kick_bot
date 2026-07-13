@@ -14,6 +14,7 @@ class RiotConfig:
     name: str
     tag: str
     api_key: str
+    crosshair: str
 
 @dataclass
 class Config:
@@ -39,7 +40,8 @@ def load_config() -> Config:
         region=os.getenv("VAL_REGION", "eu"),
         name=os.getenv("RIOT_NAME", ""),
         tag=os.getenv("RIOT_TAG", ""),
-        api_key=os.getenv("HENRIK_API_KEY", "")
+        api_key=os.getenv("HENRIK_API_KEY", ""),
+        crosshair=os.getenv("VAL_CROSSHAIR", "0;P;c;5;o;1;d;1;z;4;f;0;m;1;0t;1;0l;2;0a;1;0f;0;1b;0")
     )
     
     return Config(kick=kick_config, riot=riot_config)
