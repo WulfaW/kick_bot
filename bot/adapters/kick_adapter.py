@@ -135,7 +135,8 @@ class KickAdapter(BaseAdapter):
                 await editor.press("Enter")
                 logger.info(f"Message sent to {channel} physically via Playwright.")
             except Exception as e:
-                logger.error(f"Failed to send message to {channel} via Playwright: {e}")
+                title = await page.title()
+                logger.error(f"Failed to send message to {channel} via Playwright. Error: {e} | Page Title: {title}")
 
     async def disconnect(self):
         logger.info("Disconnecting from Kick...")
