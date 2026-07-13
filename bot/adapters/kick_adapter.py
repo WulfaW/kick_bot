@@ -60,11 +60,15 @@ class KickAdapter(BaseAdapter):
         try:
             self.playwright = await async_playwright().start()
             cookies_file = "cookies.json"
+            render_secrets_file = "/etc/secrets/cookies.json"
             cookies = None
             
             import json
             if os.path.exists(cookies_file):
                 with open(cookies_file, "r", encoding="utf-8") as f:
+                    cookies = json.load(f)
+            elif os.path.exists(render_secrets_file):
+                with open(render_secrets_file, "r", encoding="utf-8") as f:
                     cookies = json.load(f)
             elif os.getenv("KICK_COOKIES"):
                 cookies = json.loads(os.getenv("KICK_COOKIES"))
