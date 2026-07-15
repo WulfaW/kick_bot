@@ -172,7 +172,16 @@ class KickAdapter(BaseAdapter):
                 await editor.press("Enter")
                 logger.info(f"Message sent to {channel} physically via Playwright.")
             except Exception as e:
-                logger.error(f"Failed to send message to {channel} via Playwright. Error: {e}")
+                try:
+                    title = await page.title()
+                except Exception:
+                    title = "Unknown Title"
+                try:
+                    html = await page.content()
+                    snippet = html[:300].replace('\n', ' ')
+                except Exception:
+                    snippet = "Could not fetch HTML"
+                logger.error(f"Failed to send message to {channel} via Playwright. Error: {e} | Page Title: {title} | HTML Preview: {snippet}")
                 # Trigger clean up so it restarts on next message
                 if "Target crashed" in str(e) or "Connection closed" in str(e):
                     logger.warning("Target crashed or connection closed. Cleaning up for restart...")
