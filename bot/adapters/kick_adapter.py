@@ -52,10 +52,36 @@ class KickAdapter(BaseAdapter):
             )
         
         logger.info("Connected to Kick channels via kickpython wrappers.")
+        await self._init_playwright()
 
-        # Initialize Playwright for sending messages
+    async def _cleanup_playwright(self):
+        logger.info("Cleaning up Playwright resources...")
+        self.pages.clear()
+        try:
+            if self.browser:
+                await self.browser.close()
+        except Exception as e:
+            logger.debug(f"Error closing browser during cleanup: {e}")
+        finally:
+            self.browser = None
+
+        try:
+            if self.playwright:
+                await self.playwright.stop()
+        except Exception as e:
+            logger.debug(f"Error stopping playwright during cleanup: {e}")
+        finally:
+            self.playwright = None
+            
+        self.context = None
+
+    async def _init_playwright(self):
         from playwright.async_api import async_playwright
         import os
+        import json
+        
+        logger.info("Initializing Playwright...")
+        await self._cleanup_playwright()
         
         try:
             self.playwright = await async_playwright().start()
@@ -63,7 +89,6 @@ class KickAdapter(BaseAdapter):
             render_secrets_file = "/etc/secrets/cookies.json"
             cookies = None
             
-            import json
             if os.path.exists(cookies_file):
                 with open(cookies_file, "r", encoding="utf-8") as f:
                     cookies = json.load(f)
@@ -74,7 +99,6 @@ class KickAdapter(BaseAdapter):
                 cookies = json.loads(os.getenv("KICK_COOKIES"))
                 
             if cookies:
-                # Docker ve düşük RAM ortamlarında Playwright'ın çökmesini engellemek için özel argümanlar
                 self.browser = await self.playwright.chromium.launch(
                     headless=True,
                     args=[
@@ -90,7 +114,6 @@ class KickAdapter(BaseAdapter):
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
                 )
                 
-                # Playwright sameSite format uyumluluğu için küçük bir düzeltme
                 for c in cookies:
                     if 'sameSite' in c and c['sameSite'] not in ['Strict', 'Lax', 'None']:
                         del c['sameSite']
@@ -109,12 +132,10 @@ class KickAdapter(BaseAdapter):
                 await self.context.add_cookies(cookies)
                 
                 from playwright_stealth import Stealth
-                # Open a separate page for each channel
                 for channel in self.config.channels:
                     page = await self.context.new_page()
                     await Stealth().apply_stealth_async(page)
                     await page.goto(f"https://kick.com/{channel}")
-                    # Cloudflare korumasini gecmesi icin biraz bekleyelim
                     await page.wait_for_timeout(5000)
                     self.pages[channel] = page
                     
@@ -125,37 +146,44 @@ class KickAdapter(BaseAdapter):
             logger.error(f"Failed to start Playwright: {e}")
 
     async def send_message(self, channel: str, message: str):
-        logger.info(f"[Kick -> {channel}] {message}")
+        safe_msg = message.encode('ascii', 'ignore').decode('ascii')
+        logger.info(f"[Kick -> {channel}] {safe_msg}")
+        
+        # Check connection status
+        is_connected = False
+        try:
+            if self.browser:
+                is_conn = self.browser.is_connected
+                is_connected = is_conn() if callable(is_conn) else is_conn
+        except Exception:
+            is_connected = False
+            
         page = self.pages.get(channel)
+        if not page or not is_connected:
+            logger.warning(f"Browser or page for {channel} is disconnected or crashed. Restarting Playwright...")
+            await self._init_playwright()
+            page = self.pages.get(channel)
+            
         if page:
             try:
-                # Find the chat input box (Kick uses an editor with contenteditable="true")
                 editor = page.locator('div[contenteditable="true"]')
-                # Wait for it to be ready
                 await editor.wait_for(state="visible", timeout=15000)
                 await editor.fill(message)
-                
-                # Sometime Kick has a "Chat" button, but pressing Enter inside the editor works
                 await editor.press("Enter")
                 logger.info(f"Message sent to {channel} physically via Playwright.")
             except Exception as e:
-                title = await page.title()
-                try:
-                    html_content = await page.content()
-                    snippet = html_content[:300].replace('\n', ' ')
-                except:
-                    snippet = "Could not get HTML"
-                logger.error(f"Failed to send message to {channel} via Playwright. Error: {e} | Page Title: {title} | HTML Preview: {snippet}")
+                logger.error(f"Failed to send message to {channel} via Playwright. Error: {e}")
+                # Trigger clean up so it restarts on next message
+                if "Target crashed" in str(e) or "Connection closed" in str(e):
+                    logger.warning("Target crashed or connection closed. Cleaning up for restart...")
+                    await self._cleanup_playwright()
 
     async def disconnect(self):
         logger.info("Disconnecting from Kick...")
         for task in self.listener_tasks:
             task.cancel()
             
-        if self.browser:
-            await self.browser.close()
-        if self.playwright:
-            await self.playwright.stop()
+        await self._cleanup_playwright()
             
         for api in self.apis.values():
             if hasattr(api, 'close'):
