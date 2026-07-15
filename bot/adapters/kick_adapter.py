@@ -99,19 +99,11 @@ class KickAdapter(BaseAdapter):
                 cookies = json.loads(os.getenv("KICK_COOKIES"))
                 
             if cookies:
-                self.browser = await self.playwright.chromium.launch(
-                    headless=True,
-                    args=[
-                        "--disable-blink-features=AutomationControlled",
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-dev-shm-usage",
-                        "--disable-gpu",
-                        "--disable-software-rasterizer"
-                    ]
+                self.browser = await self.playwright.firefox.launch(
+                    headless=True
                 )
                 self.context = await self.browser.new_context(
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0"
                 )
                 
                 for c in cookies:
